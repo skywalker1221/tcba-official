@@ -1,1 +1,706 @@
-<h1>TCBA 球速測定器</h1>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瓶蓋棒球球速與軌跡分析儀</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .video-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: #000;
+        }
+        video {
+            display: block;
+            max-height: 60vh;
+            width: auto;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            transition: box-shadow 0.2s ease;
+        }
+        .canvas-interactive {
+            pointer-events: auto !important;
+            cursor: crosshair;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #059669;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-emerald-800 text-white p-4 shadow-md">
+        <div class="max-w-4xl mx-auto flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <h1 class="text-xl md:text-2xl font-bold tracking-wider">瓶蓋球速與軌跡分析儀</h1>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto w-full p-4 flex flex-col gap-6 relative">
+
+        <!-- 步驟 1: 上傳影片 -->
+        <section id="step-upload" class="flex flex-col items-center justify-center bg-white p-8 md:p-10 rounded-2xl shadow-sm border-2 border-dashed border-gray-300 mt-6 md:mt-10 transition-all">
+            <div class="bg-emerald-50 text-emerald-700 p-4 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <h2 class="text-xl font-bold mb-2">上傳投球影片</h2>
+            <p class="text-gray-500 text-center mb-6 max-w-md text-sm md:text-base">上傳投手後方視角的影片。分析球速後，您可以手動標記並匯出帶有「高亮白漸隱動畫」的手機相簿相容影片。</p>
+            <label class="cursor-pointer bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-8 rounded-full shadow-md transition-colors text-center w-full md:w-auto">
+                選擇影片檔案
+                <input type="file" id="video-upload" class="hidden" accept="video/mp4,video/x-m4v,video/webm,video/quicktime,video/*">
+            </label>
+        </section>
+
+        <!-- 步驟 2: 處理中 -->
+        <section id="step-processing" class="hidden flex-col items-center justify-center bg-white p-12 rounded-2xl shadow-sm mt-10">
+            <div class="loader mb-6"></div>
+            <h2 class="text-xl font-bold text-gray-700 mb-2">正在載入影片...</h2>
+            <p id="processing-text" class="text-gray-500 text-sm">準備軌跡繪製引擎中</p>
+        </section>
+
+        <!-- 步驟 3: 分析與繪製 -->
+        <section id="step-analyze" class="hidden flex-col gap-4 md:gap-6 w-full">
+            
+            <div id="instruction-box" class="bg-emerald-50 border-l-4 border-emerald-500 p-3 md:p-4 rounded text-emerald-900 text-xs md:text-sm shadow-sm">
+                <strong>第一步：計算球速。</strong> 使用「-1 幀 / +1 幀」準確標記「出手」與「進壘」瞬間。
+            </div>
+
+            <!-- 影片與畫布疊加區 -->
+            <div class="w-full flex justify-center bg-gray-100 p-2 rounded-xl">
+                <div class="video-container" id="video-wrapper">
+                    <video id="main-video" controls playsinline webkit-playsinline></video>
+                    <canvas id="drawing-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- 微調控制項 -->
+            <div class="flex items-center justify-between bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                <button id="btn-frame-back" class="flex-1 flex justify-center items-center gap-1 md:gap-2 py-3 px-2 bg-gray-100 hover:bg-gray-200 rounded-l-lg text-gray-700 font-medium active:bg-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    <span class="text-sm md:text-base">-1 幀</span>
+                </button>
+                <div class="w-[1px] h-8 bg-gray-300 mx-1 md:mx-2"></div>
+                <div class="px-2 md:px-4 text-center font-mono font-bold text-emerald-800 min-w-[80px]" id="current-time-display">0.000s</div>
+                <div class="w-[1px] h-8 bg-gray-300 mx-1 md:mx-2"></div>
+                <button id="btn-frame-forward" class="flex-1 flex justify-center items-center gap-1 md:gap-2 py-3 px-2 bg-gray-100 hover:bg-gray-200 rounded-r-lg text-gray-700 font-medium active:bg-gray-300">
+                    <span class="text-sm md:text-base">+1 幀</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- 標記球速區 -->
+            <div id="speed-mark-section" class="grid grid-cols-2 gap-3 md:gap-4">
+                <button id="btn-mark-release" class="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3 px-2 rounded-lg shadow flex flex-col items-center justify-center transition-colors">
+                    <span>1. 設為出手點</span>
+                    <span id="time-release" class="text-xs font-normal opacity-90 mt-1">尚未標記</span>
+                </button>
+                <button id="btn-mark-catch" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3 px-2 rounded-lg shadow flex flex-col items-center justify-center transition-colors">
+                    <span>2. 設為進壘點</span>
+                    <span id="time-catch" class="text-xs font-normal opacity-90 mt-1">尚未標記</span>
+                </button>
+            </div>
+
+            <!-- 結果顯示與軌跡繪製區 -->
+            <div id="result-and-draw-section" class="hidden flex-col gap-4">
+                
+                <!-- 新版球速結果卡片 -->
+                <div class="bg-[#2D3134] text-white p-5 rounded-2xl shadow-lg border border-gray-700 flex flex-col gap-4">
+                    <div class="flex flex-col">
+                        <div class="flex items-baseline gap-2">
+                            <span id="speed-result" class="text-6xl font-black text-[#FACC15]">0.0</span>
+                            <span class="text-2xl text-[#FACC15] font-bold">km/h</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#3A3F42] rounded-xl p-4 flex flex-col border border-gray-600/50">
+                        <p class="text-gray-300 text-sm font-semibold mb-1">棒球換算 (18.44m) :</p>
+                        <div class="flex items-baseline gap-2">
+                            <span id="eq-speed-result" class="text-4xl md:text-5xl font-black text-white">0.0</span>
+                            <span class="text-xl text-white font-bold tracking-wider">km/h</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 軌跡工具列與操作按鈕 -->
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 shadow-sm flex flex-col gap-3">
+                    <h3 class="font-bold text-emerald-900 flex items-center gap-2 text-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+                        第二步：手動繪製高亮白漸隱軌跡
+                    </h3>
+                    
+                    <button id="btn-back-to-mark" class="w-full bg-[#1A8256] hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-[15px] flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        返回標記球速
+                    </button>
+
+                    <button id="btn-enable-draw" class="w-full bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-[15px] flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        開啟畫布模式
+                    </button>
+
+                    <div id="draw-controls" class="hidden flex-col gap-3">
+                        <div class="bg-white p-3 rounded border border-emerald-100 shadow-inner">
+                            <label class="flex items-center cursor-pointer text-sm font-semibold text-emerald-900">
+                                <input type="checkbox" id="toggle-auto-advance" checked class="mr-3 w-5 h-5 accent-emerald-700">
+                                點擊畫布後自動前進 1 幀
+                            </label>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button id="btn-undo-point" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-2 rounded shadow text-sm transition-colors" disabled>
+                                復原上一步
+                            </button>
+                            <button id="btn-clear-draw" class="flex-1 bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 px-2 rounded shadow text-sm transition-colors">
+                                清空軌跡
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="btn-export-video" class="w-full bg-[#2A2E33] hover:bg-black active:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg flex justify-center items-center gap-2 transition-all mt-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span id="export-btn-text">匯出相簿格式 (.mp4)</span>
+                    </button>
+                    <p id="export-status" class="text-xs font-bold text-center text-emerald-700 mt-1 hidden animate-pulse">影片合成處理中，請稍候幾秒鐘...</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-center mt-2 mb-10">
+                <button id="btn-new-video" class="w-full bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#334155] font-bold py-3 px-8 rounded-lg shadow-sm transition-colors text-[15px]">
+                    重新開始 / 上傳新影片
+                </button>
+            </div>
+
+        </section>
+
+        <!-- 彈出視窗：匯出完成預覽與存檔引導 -->
+        <div id="export-modal" class="hidden fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl p-5 md:p-6 max-w-sm w-full flex flex-col items-center gap-4 shadow-2xl">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    處理完成！
+                </h3>
+                
+                <video id="exported-video-preview" src="" controls playsinline loop class="w-full rounded-lg shadow border border-gray-200 bg-black max-h-[45vh]"></video>
+                
+                <div class="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm w-full border border-blue-100 shadow-sm">
+                    <p class="font-bold text-base mb-1 flex items-center gap-1">📱 手機儲存相簿秘訣：</p>
+                    <p class="text-blue-700">請直接 <strong>「長按上方畫面」</strong>，然後選擇 <strong>「儲存影片」或「下載」</strong>。</p>
+                </div>
+                
+                <div class="w-full flex gap-2 mt-2">
+                    <button id="btn-download-file" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-2 rounded-lg shadow transition-colors text-sm">
+                        強制下載檔案
+                    </button>
+                    <button id="btn-close-modal" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-2 rounded-lg shadow transition-colors text-sm">
+                        關閉視窗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 元素抓取 ---
+            const stepUpload = document.getElementById('step-upload');
+            const stepProcessing = document.getElementById('step-processing');
+            const stepAnalyze = document.getElementById('step-analyze');
+            const videoUpload = document.getElementById('video-upload');
+            const video = document.getElementById('main-video');
+            const canvas = document.getElementById('drawing-canvas');
+            const ctx = canvas.getContext('2d'); 
+            
+            const currentTimeDisplay = document.getElementById('current-time-display');
+            const instructionBox = document.getElementById('instruction-box');
+            const drawControls = document.getElementById('draw-controls');
+            
+            const btnFrameBack = document.getElementById('btn-frame-back');
+            const btnFrameForward = document.getElementById('btn-frame-forward');
+            const btnMarkRelease = document.getElementById('btn-mark-release');
+            const btnMarkCatch = document.getElementById('btn-mark-catch');
+            const btnBackToMark = document.getElementById('btn-back-to-mark');
+            const btnEnableDraw = document.getElementById('btn-enable-draw');
+            const btnClearDraw = document.getElementById('btn-clear-draw');
+            const btnUndoPoint = document.getElementById('btn-undo-point');
+            const btnExportVideo = document.getElementById('btn-export-video');
+            const btnNewVideo = document.getElementById('btn-new-video');
+            const toggleAutoAdvance = document.getElementById('toggle-auto-advance');
+
+            const timeReleaseDisplay = document.getElementById('time-release');
+            const timeCatchDisplay = document.getElementById('time-catch');
+            const resultAndDrawSection = document.getElementById('result-and-draw-section');
+            const speedMarkSection = document.getElementById('speed-mark-section');
+            const speedResultDisplay = document.getElementById('speed-result');
+            const eqSpeedResultDisplay = document.getElementById('eq-speed-result');
+            const exportBtnText = document.getElementById('export-btn-text');
+            const exportStatus = document.getElementById('export-status');
+
+            // Modal 元素
+            const exportModal = document.getElementById('export-modal');
+            const exportedVideoPreview = document.getElementById('exported-video-preview');
+            const btnDownloadFile = document.getElementById('btn-download-file');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+
+            // --- 狀態變數 ---
+            const PITCH_DISTANCE = 9.22; 
+            const BASEBALL_DISTANCE = 18.44; 
+            const FRAME_STEP = 0.0333; 
+            let releaseTime = null;
+            let catchTime = null;
+            let trajectoryPoints = []; 
+            let isDrawingMode = false;
+            let isExporting = false;
+            let renderLoopId = null;
+            let lastExportUrl = null;
+
+            const formatTime = (t) => t.toFixed(3) + 's';
+
+            function ensureCanvasSize() {
+                const rect = video.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                        canvas.width = rect.width;
+                        canvas.height = rect.height;
+                    }
+                }
+            }
+
+            function animateCanvas() {
+                if (!isExporting) drawTrajectory();
+                if (!video.paused && !isExporting) requestAnimationFrame(animateCanvas);
+            }
+
+            video.addEventListener('play', () => { requestAnimationFrame(animateCanvas); });
+            video.addEventListener('timeupdate', () => {
+                currentTimeDisplay.innerText = formatTime(video.currentTime);
+                if (!isExporting && video.paused) drawTrajectory(); 
+            });
+            video.addEventListener('seeked', () => {
+                currentTimeDisplay.innerText = formatTime(video.currentTime);
+                if (!isExporting) drawTrajectory();
+            });
+            video.addEventListener('loadedmetadata', ensureCanvasSize);
+            window.addEventListener('resize', () => {
+                ensureCanvasSize();
+                drawTrajectory();
+            });
+
+            // --- 流程控制 ---
+            videoUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                video.src = URL.createObjectURL(file);
+                stepUpload.classList.add('hidden');
+                stepProcessing.classList.remove('hidden');
+                stepProcessing.classList.add('flex');
+
+                setTimeout(() => {
+                    stepProcessing.classList.add('hidden');
+                    stepProcessing.classList.remove('flex');
+                    stepAnalyze.classList.remove('hidden');
+                    stepAnalyze.classList.add('flex');
+                    resetAnalysis();
+                    setTimeout(ensureCanvasSize, 500); 
+                }, 1000);
+            });
+
+            // --- 影格微調 ---
+            btnFrameBack.addEventListener('click', () => {
+                video.pause();
+                video.currentTime = Math.max(0, video.currentTime - FRAME_STEP);
+            });
+            btnFrameForward.addEventListener('click', () => {
+                video.pause();
+                video.currentTime = Math.min(video.duration, video.currentTime + FRAME_STEP);
+            });
+
+            // --- 標記球速 ---
+            btnMarkRelease.addEventListener('click', () => {
+                releaseTime = video.currentTime;
+                timeReleaseDisplay.innerText = formatTime(releaseTime);
+                checkSpeed();
+            });
+            btnMarkCatch.addEventListener('click', () => {
+                catchTime = video.currentTime;
+                timeCatchDisplay.innerText = formatTime(catchTime);
+                checkSpeed();
+            });
+
+            function checkSpeed() {
+                if (releaseTime !== null && catchTime !== null) {
+                    if (catchTime <= releaseTime) {
+                        alert("⚠️ 進壘時間必須大於出手時間！");
+                        return;
+                    }
+                    const timeDiff = catchTime - releaseTime;
+                    const speedKmh = (PITCH_DISTANCE / timeDiff) * 3.6;
+                    const eqSpeedKmh = (BASEBALL_DISTANCE / timeDiff) * 3.6;
+
+                    speedResultDisplay.innerText = speedKmh.toFixed(1);
+                    eqSpeedResultDisplay.innerText = eqSpeedKmh.toFixed(1);
+                    
+                    if(speedKmh >= 100) speedResultDisplay.className = "text-6xl font-black text-red-500";
+                    else if (speedKmh >= 70) speedResultDisplay.className = "text-6xl font-black text-orange-400";
+                    else speedResultDisplay.className = "text-6xl font-black text-[#FACC15]";
+
+                    speedMarkSection.classList.add('hidden');
+                    resultAndDrawSection.classList.remove('hidden');
+                    resultAndDrawSection.classList.add('flex');
+                    instructionBox.innerHTML = "<strong>球速計算完成！</strong> 若時機點沒抓好可「返回標記球速」。確認無誤請點擊下方「開啟畫布模式」畫出軌跡。";
+                    instructionBox.className = "bg-emerald-50 border-l-4 border-emerald-500 p-3 md:p-4 rounded text-emerald-900 text-xs md:text-sm shadow-sm";
+                }
+            }
+
+            // --- 返回標記球速 ---
+            btnBackToMark.addEventListener('click', () => {
+                resultAndDrawSection.classList.add('hidden');
+                resultAndDrawSection.classList.remove('flex');
+                speedMarkSection.classList.remove('hidden');
+                
+                trajectoryPoints = [];
+                isDrawingMode = false;
+                canvas.classList.remove('canvas-interactive');
+                video.controls = true;
+                drawControls.classList.add('hidden');
+                btnEnableDraw.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> 開啟畫布模式`;
+                btnEnableDraw.className = "w-full bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-[15px] flex justify-center items-center gap-2";
+                
+                instructionBox.innerHTML = "<strong>重新標記：</strong> 使用「-1 幀 / +1 幀」微調並重新覆蓋「出手」與「進壘」瞬間。";
+                instructionBox.className = "bg-orange-50 border-l-4 border-orange-500 p-3 md:p-4 rounded text-orange-900 text-xs md:text-sm shadow-sm";
+                if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+
+            // --- 軌跡繪製邏輯 ---
+            btnEnableDraw.addEventListener('click', () => {
+                isDrawingMode = !isDrawingMode;
+                ensureCanvasSize();
+                
+                if (isDrawingMode) {
+                    video.pause();
+                    canvas.classList.add('canvas-interactive');
+                    video.controls = false; 
+                    drawControls.classList.remove('hidden');
+                    drawControls.classList.add('flex');
+                    btnEnableDraw.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 完成繪製 (預覽)`;
+                    btnEnableDraw.className = "w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-[15px] flex justify-center items-center gap-2";
+                } else {
+                    canvas.classList.remove('canvas-interactive');
+                    video.controls = true;
+                    drawControls.classList.add('hidden');
+                    drawControls.classList.remove('flex');
+                    btnEnableDraw.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> 繼續修改畫布`;
+                    btnEnableDraw.className = "w-full bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-[15px] flex justify-center items-center gap-2";
+                }
+                drawTrajectory();
+            });
+
+            canvas.addEventListener('pointerdown', (e) => {
+                if (!isDrawingMode) return;
+                e.preventDefault(); 
+                
+                ensureCanvasSize();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                trajectoryPoints.push({ t: video.currentTime, relX: x / canvas.width, relY: y / canvas.height });
+                trajectoryPoints.sort((a, b) => a.t - b.t);
+                btnUndoPoint.disabled = false;
+                drawTrajectory(); 
+
+                if (toggleAutoAdvance.checked) {
+                    setTimeout(() => { video.currentTime = Math.min(video.duration, video.currentTime + FRAME_STEP); }, 50); 
+                }
+            });
+
+            btnClearDraw.addEventListener('click', () => {
+                trajectoryPoints = []; btnUndoPoint.disabled = true; drawTrajectory();
+            });
+
+            btnUndoPoint.addEventListener('click', () => {
+                if (trajectoryPoints.length > 0) {
+                    trajectoryPoints.pop(); 
+                    if(trajectoryPoints.length === 0) btnUndoPoint.disabled = true;
+                    drawTrajectory();
+                }
+            });
+
+            function generateSmoothPath(points) {
+                let path = [];
+                if (points.length === 0) return path;
+                if (points.length === 1) { path.push({ ...points[0] }); return path; }
+
+                const tension = 1.0; 
+                for (let i = 0; i < points.length - 1; i++) {
+                    const p0 = i > 0 ? points[i - 1] : points[0];
+                    const p1 = points[i];
+                    const p2 = points[i + 1];
+                    const p3 = i !== points.length - 2 ? points[i + 2] : p2;
+
+                    const cp1x = p1.relX + (p2.relX - p0.relX) / 6 * tension;
+                    const cp1y = p1.relY + (p2.relY - p0.relY) / 6 * tension;
+                    const cp2x = p2.relX - (p3.relX - p1.relX) / 6 * tension;
+                    const cp2y = p2.relY - (p3.relY - p1.relY) / 6 * tension;
+
+                    const steps = 40; 
+                    for (let j = 0; j <= steps; j++) {
+                        if (i > 0 && j === 0) continue; 
+                        const u = j / steps; const u2 = u * u; const u3 = u2 * u;
+                        const mt = 1 - u; const mt2 = mt * mt; const mt3 = mt2 * mt;
+
+                        const rx = mt3 * p1.relX + 3 * mt2 * u * cp1x + 3 * mt * u2 * cp2x + u3 * p2.relX;
+                        const ry = mt3 * p1.relY + 3 * mt2 * u * cp1y + 3 * mt * u2 * cp2y + u3 * p2.relY;
+                        
+                        const exactTime = p1.t + u * (p2.t - p1.t);
+                        path.push({ relX: rx, relY: ry, t: exactTime });
+                    }
+                }
+                return path;
+            }
+
+            function renderTrajectory(targetCtx, width, height, currentVidTime, hidePoints = false) {
+                targetCtx.clearRect(0, 0, width, height);
+                if (trajectoryPoints.length === 0) return;
+
+                const fullSmoothPath = generateSmoothPath(trajectoryPoints);
+                const activePath = [];
+                const FADE_DURATION = 1.0; 
+                const tailTime = currentVidTime - FADE_DURATION;
+
+                for (let i = 0; i < fullSmoothPath.length; i++) {
+                    const p = fullSmoothPath[i];
+                    if (p.t > currentVidTime) {
+                        if (i > 0) {
+                            const prev = fullSmoothPath[i - 1];
+                            const ratio = (currentVidTime - prev.t) / (p.t - prev.t);
+                            activePath.push({
+                                relX: prev.relX + (p.relX - prev.relX) * ratio,
+                                relY: prev.relY + (p.relY - prev.relY) * ratio,
+                                t: currentVidTime
+                            });
+                        }
+                        break;
+                    }
+                    if (p.t < tailTime) continue;
+                    if (activePath.length === 0 && i > 0 && fullSmoothPath[i-1].t < tailTime) {
+                        const prev = fullSmoothPath[i - 1];
+                        const ratio = (tailTime - prev.t) / (p.t - prev.t);
+                        activePath.push({ relX: prev.relX + (p.relX - prev.relX) * ratio, relY: prev.relY + (p.relY - prev.relY) * ratio, t: tailTime });
+                    }
+                    activePath.push(p);
+                }
+
+                const baseWidth = Math.max(width, 300);
+                const lineWidth = Math.max(1.5, baseWidth * 0.003); 
+                const pointRadius = Math.max(2.5, baseWidth * 0.006);
+
+                if (activePath.length > 1) {
+                    targetCtx.lineWidth = lineWidth;
+                    targetCtx.lineCap = 'butt'; 
+                    targetCtx.lineJoin = 'round';
+
+                    for (let i = 1; i < activePath.length; i++) {
+                        const pPrev = activePath[i - 1];
+                        const pCurr = activePath[i];
+                        const age = currentVidTime - ((pPrev.t + pCurr.t) / 2);
+                        const alpha = Math.max(0, 1 - (age / FADE_DURATION)); 
+                        
+                        targetCtx.beginPath();
+                        targetCtx.moveTo(pPrev.relX * width, pPrev.relY * height);
+                        targetCtx.lineTo(pCurr.relX * width, pCurr.relY * height);
+                        
+                        targetCtx.strokeStyle = `rgba(255, 255, 255, ${alpha})`; 
+                        targetCtx.shadowBlur = Math.max(6, baseWidth * 0.012); 
+                        targetCtx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.9})`; 
+                        targetCtx.stroke();
+                    }
+                }
+
+                if (!hidePoints && isDrawingMode) {
+                    targetCtx.shadowBlur = 0; 
+                    const visibleRawPoints = trajectoryPoints.filter(p => p.t <= currentVidTime + 0.1 && p.t >= tailTime - 0.2);
+                    visibleRawPoints.forEach((p, index) => {
+                        targetCtx.beginPath();
+                        if (index === visibleRawPoints.length - 1) {
+                            targetCtx.fillStyle = '#ffffff'; 
+                            targetCtx.arc(p.relX * width, p.relY * height, pointRadius * 1.5, 0, Math.PI * 2);
+                        } else {
+                            targetCtx.fillStyle = 'rgba(255, 255, 255, 0.4)'; 
+                            targetCtx.arc(p.relX * width, p.relY * height, pointRadius, 0, Math.PI * 2);
+                        }
+                        targetCtx.fill();
+                    });
+                }
+            }
+
+            function drawTrajectory() {
+                if(canvas.width > 0 && canvas.height > 0) {
+                    renderTrajectory(ctx, canvas.width, canvas.height, video.currentTime, !isDrawingMode);
+                }
+            }
+
+            // --- 匯出影片功能 ---
+            btnExportVideo.addEventListener('click', async () => {
+                if (trajectoryPoints.length === 0) {
+                    alert("請先開啟畫布模式，並在畫面上點擊畫出軌跡！");
+                    return;
+                }
+                
+                isExporting = true;
+                btnExportVideo.disabled = true;
+                btnExportVideo.classList.add('opacity-50');
+                exportBtnText.innerText = "錄影合成中 (請勿切換畫面)...";
+                exportStatus.classList.remove('hidden');
+
+                const MAX_DIMENSION = 1280; 
+                let expWidth = video.videoWidth;
+                let expHeight = video.videoHeight;
+                if (expWidth > MAX_DIMENSION || expHeight > MAX_DIMENSION) {
+                    const ratio = Math.min(MAX_DIMENSION / expWidth, MAX_DIMENSION / expHeight);
+                    expWidth = Math.round(expWidth * ratio);
+                    expHeight = Math.round(expHeight * ratio);
+                }
+
+                const expCanvas = document.createElement('canvas');
+                expCanvas.width = expWidth;
+                expCanvas.height = expHeight;
+                expCanvas.style.position = 'fixed'; expCanvas.style.top = '-9999px'; expCanvas.style.left = '-9999px'; expCanvas.style.opacity = '0';
+                document.body.appendChild(expCanvas);
+                const expCtx = expCanvas.getContext('2d');
+
+                const startRecordTime = Math.max(0, trajectoryPoints[0].t - 0.5);
+                const endRecordTime = Math.min(video.duration, trajectoryPoints[trajectoryPoints.length - 1].t + 1.2);
+                
+                const originalMuted = video.muted;
+                video.muted = true;
+                video.currentTime = startRecordTime;
+                
+                video.addEventListener('seeked', function onSeeked() {
+                    video.removeEventListener('seeked', onSeeked);
+                    
+                    video.play().then(() => {
+                        setTimeout(() => {
+                            const stream = expCanvas.captureStream(30); 
+                            let mimeType = '';
+                            if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4'; 
+                            else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) mimeType = 'video/webm;codecs=h264'; 
+                            else mimeType = 'video/webm'; 
+                            
+                            const recorder = new MediaRecorder(stream, { mimeType: mimeType });
+                            const chunks = [];
+
+                            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+                            recorder.onstop = () => {
+                                const blob = new Blob(chunks, { type: 'video/mp4' }); 
+                                if(lastExportUrl) URL.revokeObjectURL(lastExportUrl);
+                                lastExportUrl = URL.createObjectURL(blob);
+                                
+                                exportedVideoPreview.src = lastExportUrl;
+                                exportModal.classList.remove('hidden');
+                                setTimeout(() => exportedVideoPreview.play().catch(e=>console.log("Play blocked")), 200);
+
+                                isExporting = false;
+                                btnExportVideo.disabled = false;
+                                btnExportVideo.classList.remove('opacity-50');
+                                exportBtnText.innerText = "匯出相簿格式 (.mp4)";
+                                exportStatus.classList.add('hidden');
+                                
+                                video.muted = originalMuted;
+                                if(document.body.contains(expCanvas)) document.body.removeChild(expCanvas);
+                                cancelAnimationFrame(renderLoopId);
+                                
+                                if(!isDrawingMode) video.controls = true;
+                                drawTrajectory(); 
+                            };
+
+                            recorder.start();
+                            
+                            function renderExportFrame() {
+                                if (video.currentTime >= endRecordTime || video.ended) {
+                                    video.pause(); recorder.stop(); return;
+                                }
+                                if (video.readyState >= 2) {
+                                    expCtx.drawImage(video, 0, 0, expWidth, expHeight);
+                                    renderTrajectory(expCtx, expWidth, expHeight, video.currentTime, true);
+                                }
+                                renderLoopId = requestAnimationFrame(renderExportFrame);
+                            }
+                            renderLoopId = requestAnimationFrame(renderExportFrame);
+                            
+                        }, 300); 
+                    }).catch(e => {
+                        alert("自動播放失敗，請確認您的裝置允許網頁播放影片。");
+                        isExporting = false; btnExportVideo.disabled = false; exportStatus.classList.add('hidden');
+                        if(document.body.contains(expCanvas)) document.body.removeChild(expCanvas);
+                    });
+                });
+            });
+
+            // Modal 互動
+            btnCloseModal.addEventListener('click', () => {
+                exportModal.classList.add('hidden');
+                exportedVideoPreview.pause();
+            });
+
+            btnDownloadFile.addEventListener('click', () => {
+                if(lastExportUrl) {
+                    const a = document.createElement('a');
+                    a.href = lastExportUrl;
+                    a.download = `瓶蓋球軌跡-${speedResultDisplay.innerText}kmh.mp4`; 
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+
+            // --- 重置與新影片 ---
+            function resetAnalysis() {
+                releaseTime = null; catchTime = null; trajectoryPoints = []; isDrawingMode = false;
+                timeReleaseDisplay.innerText = '尚未標記'; timeCatchDisplay.innerText = '尚未標記';
+                speedMarkSection.classList.remove('hidden'); resultAndDrawSection.classList.add('hidden'); resultAndDrawSection.classList.remove('flex');
+                canvas.classList.remove('canvas-interactive'); video.controls = true; drawControls.classList.add('hidden');
+                btnEnableDraw.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> 開啟畫布模式`;
+                btnEnableDraw.className = "w-full bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors text-[15px] flex justify-center items-center gap-2";
+                instructionBox.innerHTML = "<strong>第一步：計算球速。</strong> 使用「-1 幀 / +1 幀」準確標記「出手」與「進壘」瞬間。";
+                instructionBox.className = "bg-emerald-50 border-l-4 border-emerald-500 p-3 md:p-4 rounded text-emerald-900 text-xs md:text-sm shadow-sm";
+                if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            btnNewVideo.addEventListener('click', () => {
+                video.pause(); video.removeAttribute('src'); video.load(); videoUpload.value = "";
+                stepAnalyze.classList.add('hidden'); stepAnalyze.classList.remove('flex'); stepUpload.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
