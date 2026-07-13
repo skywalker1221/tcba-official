@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IG Reels 綜藝短影音產生器 (終極完美版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 載入日式 POP 字型、圓體與思源宋體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Kosugi+Maru&family=Dela+Gothic+One&family=Noto+Sans+TC:wght@900&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Mochiy Pop One', 'Noto Serif TC', serif;
+            background-color: #08080a;
+            color: #f3f4f6;
+        }
+        #source-video {
+            display: none;
+        }
+        canvas {
+            max-height: 55vh;
+            object-fit: contain;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95);
+            background-color: #000;
+        }
+        /* 美化色彩選擇器 */
+        .color-picker {
+            -webkit-appearance: none;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 0;
+            background: none;
+        }
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker::-webkit-color-swatch {
+            border: 2px solid #ffffff33;
+            border-radius: 50%;
+        }
+        /* 自訂美化滑桿 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #1f2937;
+            height: 6px;
+            border-radius: 9999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 flex flex-col items-center justify-start max-w-2xl mx-auto space-y-6">
+
+    <!-- 頂部標題列 -->
+    <div class="w-full text-center py-2">
+        <span class="bg-gradient-to-r from-red-500 to-yellow-500 text-[10px] md:text-xs font-bold px-3 py-1 rounded-full text-white tracking-widest uppercase shadow-md animate-pulse">
+            JAPANESE POP ART WORKFLOW
+        </span>
+        <h1 class="text-2xl md:text-3xl font-black mt-2 bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-200 to-gray-400">
+            🎬 日式綜藝短影音剪輯
+        </h1>
+        <p class="text-gray-400 text-xs mt-1">iOS 穩定版 · 雙層向量描邊 · 完美宋體字卡</p>
+    </div>
+
+    <!-- ==========================================
+         步驟 1：影片載入與固定尺寸選擇
+         ========================================== -->
+    <div class="w-full bg-gray-900/90 rounded-2xl p-5 shadow-xl border border-gray-800 space-y-4">
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h2 class="text-sm font-bold text-blue-400 flex items-center gap-1.5">
+                <span class="flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-full w-5 h-5 text-xs">1</span>
+                載入影片與設定顯示尺寸
+            </h2>
+            <span class="text-[10px] text-gray-500">上傳後直接點擊下方尺寸</span>
+        </div>
+        
+        <!-- 上傳按鈕 -->
+        <input type="file" id="video-upload" accept="video/*" class="block w-full text-xs text-gray-400
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-lg file:border-0
+            file:text-xs file:font-semibold
+            file:bg-blue-600/20 file:text-blue-400
+            hover:file:bg-blue-600/30 cursor-pointer" />
+        
+        <!-- 尺寸預設按鈕區 -->
+        <div class="space-y-2">
+            <span class="text-xs text-gray-400 font-medium block">選擇畫面固定尺寸 (點選即自動置中)：</span>
+            <div class="grid grid-cols-5 gap-2">
+                <button type="button" data-ratio="16/9" class="ratio-btn py-2 px-1 text-xs font-bold rounded-lg border border-gray-700 bg-gray-950/60 text-gray-300 hover:border-blue-500 hover:text-white transition active:scale-95">
+                    16:9
+                </button>
+                <button type="button" data-ratio="7/3" class="ratio-btn py-2 px-1 text-xs font-bold rounded-lg border border-gray-700 bg-gray-950/60 text-gray-300 hover:border-blue-500 hover:text-white transition active:scale-95">
+                    7:3
+                </button>
+                <button type="button" data-ratio="5/4" class="ratio-btn py-2 px-1 text-xs font-bold rounded-lg border border-gray-700 bg-gray-950/60 text-gray-300 hover:border-blue-500 hover:text-white transition active:scale-95">
+                    5:4
+                </button>
+                <button type="button" data-ratio="1/1" class="ratio-btn py-2 px-1 text-xs font-bold rounded-lg border border-gray-700 bg-gray-950/60 text-gray-300 hover:border-blue-500 hover:text-white transition active:scale-95">
+                    1/1
+                </button>
+                <button type="button" data-ratio="4/5" class="ratio-btn py-2 px-1 text-xs font-bold rounded-lg border border-blue-500 bg-blue-600/10 text-blue-400 hover:text-white transition active:scale-95">
+                    4:5 (原)
+                </button>
+            </div>
+        </div>
+
+        <!-- 摺疊進階微調面板 -->
+        <details class="group border border-gray-800 rounded-lg bg-gray-950/20">
+            <summary class="list-none flex justify-between items-center p-3 cursor-pointer text-xs font-medium text-gray-400 hover:text-white">
+                <span>🔧 手動微調？點此展開控制 (縮放/移動)</span>
+                <span class="transition group-open:rotate-180">▼</span>
+            </summary>
+            <div class="p-3 border-t border-gray-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <!-- 縮放 -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-gray-400">影片縮放 (Scale)</span>
+                        <span id="scale-val" class="text-blue-400 font-bold">1.0x</span>
+                    </div>
+                    <input type="range" id="video-scale" min="0.5" max="3" step="0.05" value="1.0" class="w-full">
+                </div>
+                <!-- 水平 -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-gray-400">水平位移 (X)</span>
+                        <span id="offset-x-val" class="text-blue-400 font-bold">0px</span>
+                    </div>
+                    <input type="range" id="video-offset-x" min="-400" max="400" step="5" value="0" class="w-full">
+                </div>
+                <!-- 垂直 -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <span class="text-gray-400">垂直位移 (Y)</span>
+                        <span id="offset-y-val" class="text-blue-400 font-bold">0px</span>
+                    </div>
+                    <input type="range" id="video-offset-y" min="-400" max="400" step="5" value="0" class="w-full">
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- ==========================================
+         實時屏幕區（位於中央，方便對照）
+         ========================================== -->
+    <div class="w-full flex flex-col items-center py-1">
+        <div class="relative rounded-2xl overflow-hidden border-4 border-gray-800 shadow-2xl bg-black">
+            <!-- 渲染主 Canvas -->
+            <canvas id="render-canvas" width="720" height="1280" class="w-full h-auto max-w-[320px] md:max-w-[350px]"></canvas>
+            
+            <!-- 點擊播放暫停覆蓋層 -->
+            <button id="play-pause-btn" class="absolute inset-0 w-full h-full flex justify-center items-center bg-black/40 hover:bg-black/20 transition group hidden">
+                <div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex justify-center items-center group-hover:scale-110 transition shadow-lg">
+                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+            </button>
+        </div>
+        <p class="text-[10px] text-gray-500 mt-2">💡 實時屏幕：iOS 高畫質完美渲染預覽</p>
+    </div>
+
+    <!-- ==========================================
+         步驟 2：字幕與導出設定（位於屏幕下方）
+         ========================================== -->
+    <div class="w-full bg-gray-900/90 rounded-2xl p-5 shadow-xl border border-gray-800 space-y-5">
+        
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h2 class="text-sm font-bold text-pink-400 flex items-center gap-1.5">
+                <span class="flex items-center justify-center bg-pink-500/10 text-pink-400 rounded-full w-5 h-5 text-xs">2</span>
+                日式字體風格與字卡樣式
+            </h2>
+            <span class="text-[10px] text-gray-500">100% 向量去干涉描邊技術</span>
+        </div>
+
+        <!-- 1. 字型與渲染模式 -->
+        <div class="bg-gray-950/40 p-3.5 rounded-xl border border-gray-800 space-y-3">
+            <div>
+                <label for="font-family-select" class="text-xs font-bold text-yellow-500 block mb-1">🎋 上排大字字體風格：</label>
+                <select id="font-family-select" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500">
+                    <option value="'Mochiy Pop One', 'Noto Sans TC', sans-serif" selected>🎯 日式手繪 POP 體 (Mochiy Pop) - 經典超醒目</option>
+                    <option value="'Kosugi Maru', 'Noto Sans TC', sans-serif">🟢 日式綜藝圓體 (Kosugi Maru) - 圓潤可愛</option>
+                    <option value="'Dela Gothic One', 'Noto Sans TC', sans-serif">🔥 日式綜藝粗黑 (Dela Gothic) - 極粗力量感</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="top-fill-style" class="text-xs font-bold text-yellow-500 block mb-1">✨ 上方大字渲染效果：</label>
+                <select id="top-fill-style" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-yellow-500">
+                    <option value="silver" selected>💿 經典金屬銀色漸層 (高對比亮白金屬)</option>
+                    <option value="gold">👑 奢華金屬金色漸層</option>
+                    <option value="solid">🎨 傳統純色填充 (可利用下方調色盤)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. 上方文字設定 -->
+        <div class="bg-gray-950/40 p-3.5 rounded-xl border border-gray-800 space-y-3">
+            <span class="text-xs font-bold text-gray-300 block">✍️ 上方大標題 (支援換行，兩行智慧防切邊)</span>
+            <textarea id="top-text" rows="2" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-pink-500" placeholder="輸入上方內文...">「打ったら&#10;丸ポーズお願い」</textarea>
+            
+            <!-- 純色模式下才顯示的調色盤 -->
+            <div id="solid-color-controls" class="grid grid-cols-2 gap-4 text-xs hidden">
+                <div class="flex items-center gap-2">
+                    <input type="color" id="top-text-color" value="#ffffff" class="color-picker">
+                    <div>
+                        <p class="font-bold text-gray-300">字體填滿</p>
+                        <p class="text-[10px] text-gray-400">純色模式生效</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="color" id="top-border-color" value="#000000" class="color-picker">
+                    <div>
+                        <p class="font-bold text-gray-300">外框邊緣</p>
+                        <p class="text-[10px] text-gray-400">純色模式生效</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pt-1">
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-400">大標題垂直中心位置 (安全定位 Y=100~550)</span>
+                    <span id="top-y-val" class="text-pink-400 font-bold">Y: 130</span>
+                </div>
+                <!-- 限制最小高度為 100，預設設為 130，保證在 iOS 上完全不頂頭、不切邊 -->
+                <input type="range" id="top-y" min="100" max="550" step="5" value="130" class="w-full">
+            </div>
+        </div>
+
+        <!-- 3. 下方標籤設定 -->
+        <div class="bg-gray-950/40 p-3.5 rounded-xl border border-gray-800 space-y-3">
+            <span class="text-xs font-bold text-gray-300 block">🏷️ 下方標籤設定 (已鎖定為思源宋體，絕無交叉亂線)</span>
+            <input type="text" id="bottom-text" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500" value="中京 丸山(幸)">
+            
+            <div class="grid grid-cols-3 gap-2 text-[10px] py-1">
+                <div class="flex flex-col items-center gap-1">
+                    <input type="color" id="bottom-text-color" value="#ff2222" class="color-picker">
+                    <span class="text-gray-400 font-bold">字體填滿</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <input type="color" id="bottom-border-color" value="#ffffff" class="color-picker">
+                    <span class="text-gray-400 font-bold">外框邊緣</span>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                    <input type="color" id="bottom-bg-color" value="#555555" class="color-picker">
+                    <span class="text-gray-400 font-bold">圓角底板</span>
+                </div>
+            </div>
+
+            <div class="pt-1">
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-400">下方標籤垂直位置</span>
+                    <span id="bottom-y-val" class="text-purple-400 font-bold">Y: 1040</span>
+                </div>
+                <input type="range" id="bottom-y" min="700" max="1230" step="5" value="1040" class="w-full">
+            </div>
+        </div>
+
+        <!-- 4. IG 安全框控制 -->
+        <div class="flex items-center justify-between bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20 text-xs">
+            <div class="flex flex-col pr-4">
+                <span class="font-bold text-yellow-500">👀 顯示 IG Reels 版面遮罩</span>
+                <span class="text-gray-500 text-[10px]">輔助排版用，匯出時會自動隱藏。</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" id="toggle-safe-zone" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
+
+        <!-- 匯出與導出按鈕 -->
+        <div class="pt-2">
+            <button id="export-btn" disabled class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-bold py-4 px-4 rounded-xl shadow-lg transform transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                <svg id="export-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span id="export-text">匯出並下載完美 MP4</span>
+            </button>
+            <p class="text-[11px] text-gray-500 text-center mt-2.5" id="status-msg">請先於步驟 1 點擊選取影片檔案</p>
+        </div>
+    </div>
+
+    <!-- 隱藏的原始 Video 標籤 -->
+    <video id="source-video" playsinline loop></video>
+
+    <script>
+        // DOM 元素
+        const videoUpload = document.getElementById('video-upload');
+        const videoElement = document.getElementById('source-video');
+        const canvas = document.getElementById('render-canvas');
+        const ctx = canvas.getContext('2d');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const exportBtn = document.getElementById('export-btn');
+        const exportText = document.getElementById('export-text');
+        const statusMsg = document.getElementById('status-msg');
+
+        // 控制參數
+        const scaleInput = document.getElementById('video-scale');
+        const offsetXInput = document.getElementById('video-offset-x');
+        const offsetYInput = document.getElementById('video-offset-y');
+        
+        const scaleVal = document.getElementById('scale-val');
+        const offsetXVal = document.getElementById('offset-x-val');
+        const offsetYVal = document.getElementById('offset-y-val');
+
+        const fontSelect = document.getElementById('font-family-select');
+        const topFillStyleSelect = document.getElementById('top-fill-style');
+        const solidColorControls = document.getElementById('solid-color-controls');
+
+        const topTextInput = document.getElementById('top-text');
+        const topTextColor = document.getElementById('top-text-color');
+        const topBorderColor = document.getElementById('top-border-color');
+        const topYInput = document.getElementById('top-y');
+        const topYVal = document.getElementById('top-y-val');
+
+        const bottomTextInput = document.getElementById('bottom-text');
+        const bottomTextColor = document.getElementById('bottom-text-color');
+        const bottomBorderColor = document.getElementById('bottom-border-color');
+        const bottomBgColor = document.getElementById('bottom-bg-color');
+        const bottomYInput = document.getElementById('bottom-y');
+        const bottomYVal = document.getElementById('bottom-y-val');
+
+        const toggleSafeZone = document.getElementById('toggle-safe-zone');
+        const ratioBtns = document.querySelectorAll('.ratio-btn');
+
+        // 核心狀態
+        let animationFrameId;
+        let isRecording = false;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let videoLoaded = false;
+        let recordingTimer = null;
+
+        // 預設比例 4:5
+        let currentBoxWidth = 720;
+        let currentBoxHeight = 900; 
+
+        // 初始化
+        window.addEventListener('load', () => {
+            drawFrame();
+        });
+
+        topFillStyleSelect.addEventListener('change', () => {
+            if (topFillStyleSelect.value === 'solid') {
+                solidColorControls.classList.remove('hidden');
+            } else {
+                solidColorControls.classList.add('hidden');
+            }
+            triggerRedraw();
+        });
+
+        fontSelect.addEventListener('change', () => {
+            triggerRedraw();
+        });
+
+        document.fonts.ready.then(() => {
+            drawFrame();
+        });
+
+        // 綁定手動滑桿
+        const controls = [
+            { el: scaleInput, valEl: scaleVal, suffix: 'x' },
+            { el: offsetXInput, valEl: offsetXVal, suffix: 'px' },
+            { el: offsetYInput, valEl: offsetYVal, suffix: 'px' },
+            { el: topYInput, valEl: topYVal, prefix: 'Y: ' },
+            { el: bottomYInput, valEl: bottomYVal, prefix: 'Y: ' }
+        ];
+
+        controls.forEach(ctrl => {
+            ctrl.el.addEventListener('input', (e) => {
+                let v = e.target.value;
+                if (ctrl.suffix) v += ctrl.suffix;
+                if (ctrl.prefix) v = ctrl.prefix + v;
+                ctrl.valEl.textContent = v;
+                triggerRedraw();
+            });
+        });
+
+        [
+            topTextInput, topTextColor, topBorderColor,
+            bottomTextInput, bottomTextColor, bottomBorderColor, bottomBgColor,
+            toggleSafeZone
+        ].forEach(input => {
+            input.addEventListener('input', triggerRedraw);
+        });
+
+        function triggerRedraw() {
+            drawFrame();
+        }
+
+        // 一鍵固定尺寸
+        ratioBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                ratioBtns.forEach(b => {
+                    b.classList.remove('border-blue-500', 'bg-blue-600/10', 'text-blue-400');
+                    b.classList.add('border-gray-700', 'bg-gray-950/60', 'text-gray-300');
+                });
+                btn.classList.remove('border-gray-700', 'bg-gray-950/60', 'text-gray-300');
+                btn.classList.add('border-blue-500', 'bg-blue-600/10', 'text-blue-400');
+
+                const ratioStr = btn.getAttribute('data-ratio');
+                const [wPart, hPart] = ratioStr.split('/').map(Number);
+                const targetRatio = wPart / hPart;
+
+                currentBoxWidth = 720;
+                currentBoxHeight = Math.round(720 / targetRatio);
+
+                if (currentBoxHeight > 1280) {
+                    currentBoxHeight = 1280;
+                    currentBoxWidth = Math.round(1280 * targetRatio);
+                }
+
+                scaleInput.value = "1.0";
+                scaleVal.textContent = "1.0x";
+                offsetXInput.value = "0";
+                offsetXVal.textContent = "0px";
+                offsetYInput.value = "0";
+                offsetYVal.textContent = "0px";
+
+                drawFrame();
+            });
+        });
+
+        // 處理影片載入
+        videoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            videoLoaded = false;
+            exportBtn.disabled = true;
+            statusMsg.textContent = '解碼影片中，請稍候...';
+
+            const url = URL.createObjectURL(file);
+            videoElement.src = url;
+            videoElement.load();
+        });
+
+        videoElement.addEventListener('loadedmetadata', () => {
+            videoLoaded = true;
+            exportBtn.disabled = false;
+            playPauseBtn.classList.remove('hidden');
+            statusMsg.textContent = '解碼成功！雙層描邊技術已啟動，完美相容 iOS 下載！';
+            videoElement.currentTime = 0.1; 
+        });
+
+        videoElement.addEventListener('seeked', () => { drawFrame(); });
+        videoElement.addEventListener('canplay', () => { drawFrame(); });
+        videoElement.addEventListener('timeupdate', () => {
+            if (videoElement.paused && !isRecording) {
+                drawFrame();
+            }
+        });
+
+        videoElement.addEventListener('play', () => {
+            playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            renderLoop();
+        });
+
+        videoElement.addEventListener('pause', () => {
+            playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            cancelAnimationFrame(animationFrameId);
+            drawFrame();
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            if (videoElement.paused) {
+                videoElement.play();
+            } else {
+                videoElement.pause();
+            }
+        });
+
+        function renderLoop() {
+            drawFrame();
+            if (!videoElement.paused && !videoElement.ended) {
+                animationFrameId = requestAnimationFrame(renderLoop);
+            }
+        }
+
+        // 核心渲染 Canvas 功能
+        function drawFrame() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const frameW = currentBoxWidth;
+            const frameH = currentBoxHeight;
+            const frameX = (canvas.width - frameW) / 2;
+            const frameY = (canvas.height - frameH) / 2;
+
+            // 1. 繪製影片區
+            if (videoLoaded && videoElement.readyState >= 1) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(frameX, frameY, frameW, frameH);
+                ctx.clip();
+
+                const vWidth = videoElement.videoWidth || 720;
+                const vHeight = videoElement.videoHeight || 1280;
+                const vRatio = vWidth / vHeight;
+                const fRatio = frameW / frameH;
+                let baseW, baseH;
+
+                if (vRatio > fRatio) {
+                    baseH = frameH;
+                    baseW = frameH * vRatio;
+                } else {
+                    baseW = frameW;
+                    baseH = frameW / vRatio;
+                }
+
+                const scale = parseFloat(scaleInput.value);
+                const offX = parseFloat(offsetXInput.value);
+                const offY = parseFloat(offsetYInput.value);
+
+                const drawW = baseW * scale;
+                const drawH = baseH * scale;
+                const drawX = frameX + (frameW - drawW) / 2 + offX;
+                const drawY = frameY + (frameH - drawH) / 2 + offY;
+
+                try {
+                    ctx.drawImage(videoElement, drawX, drawY, drawW, drawH);
+                } catch (err) {
+                    console.warn("無法繪製影格:", err);
+                }
+                ctx.restore();
+            } else {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([15, 10]);
+                ctx.strokeRect(frameX + 10, frameY + 10, frameW - 20, frameH - 20);
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('【 影片顯示預留區（置中 4:5 ） 】', canvas.width / 2, canvas.height / 2);
+                ctx.restore();
+            }
+
+            // 取得選擇的字型設置
+            const chosenFont = fontSelect.value;
+
+            // ==========================================
+            // 2. 繪製上方日式大標題 (100% 解決 iOS 變黑 Bug)
+            // ==========================================
+            const topText = topTextInput.value;
+            if (topText) {
+                const topLines = topText.split('\n');
+                const numLines = topLines.length;
+
+                // 根據行數動態縮放字體與行高，確保多行字完美塞在標題區
+                let fontSize = 76;
+                let lineHeight = 95;
+                if (numLines === 2) {
+                    fontSize = 54;    
+                    lineHeight = 68;  
+                } else if (numLines >= 3) {
+                    fontSize = 38;
+                    lineHeight = 48;
+                }
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `900 ${fontSize}px ${chosenFont}`;
+
+                // 以「整組文字的垂直中心點 Y」為基準
+                const centerY = parseInt(topYInput.value); 
+                const totalTextHeight = (numLines - 1) * lineHeight;
+                const startY = centerY - (totalTextHeight / 2);
+
+                topLines.forEach((line, index) => {
+                    const textY = startY + (index * lineHeight);
+                    
+                    // 【終極解決方案】：不用 shadowBlur，改用「多層透明漸層線條疊加」來做白色外發光！
+                    // 這在 iOS Safari、Chrome、甚至舊版手機瀏覽器中 100% 絕對穩定、不黑屏不切邊！
+                    ctx.save();
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+                    
+                    // 第一層（最淡、最寬的外發光圈）
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = fontSize * 0.45;
+                    ctx.strokeText(line, canvas.width / 2, textY);
+                    
+                    // 第二層（中等強度外光圈）
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                    ctx.lineWidth = fontSize * 0.35;
+                    ctx.strokeText(line, canvas.width / 2, textY);
+                    
+                    // 第三層（核心實體白邊）
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = fontSize * 0.25;
+                    ctx.strokeText(line, canvas.width / 2, textY);
+                    ctx.restore();
+                    
+                    // B. 中間層：純黑銳利外框 (Sharp Black Outline)
+                    ctx.save();
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+                    ctx.lineWidth = fontSize * 0.18;
+                    ctx.strokeStyle = (topFillStyleSelect.value === 'solid') ? topBorderColor.value : '#000000';
+                    ctx.strokeText(line, canvas.width / 2, textY);
+                    ctx.restore();
+                    
+                    // C. 最表層：字體填充 (銀色漸層/金色漸層/純色)
+                    ctx.save();
+                    if (topFillStyleSelect.value === 'silver') {
+                        // 精密亮色金屬銀色漸層 (純白頂部 -> 亮銀白 -> 銀灰)
+                        const grad = ctx.createLinearGradient(0, textY - (fontSize/2), 0, textY + (fontSize/2));
+                        grad.addColorStop(0, '#ffffff');     // 純白
+                        grad.addColorStop(0.3, '#f5f5f7');   // 極淺亮銀
+                        grad.addColorStop(0.65, '#d0d0d8');  // 亮銀
+                        grad.addColorStop(1, '#a0a0af');      // 經典金屬銀
+                        ctx.fillStyle = grad;
+                    } else if (topFillStyleSelect.value === 'gold') {
+                        // 奢華金色漸層
+                        const grad = ctx.createLinearGradient(0, textY - (fontSize/2), 0, textY + (fontSize/2));
+                        grad.addColorStop(0, '#fff6d1');    
+                        grad.addColorStop(0.4, '#ffd700');  
+                        grad.addColorStop(0.7, '#e6b800');  
+                        grad.addColorStop(1, '#9e7800');     
+                        ctx.fillStyle = grad;
+                    } else {
+                        ctx.fillStyle = topTextColor.value;
+                    }
+                    ctx.fillText(line, canvas.width / 2, textY);
+                    ctx.restore();
+                });
+            }
+
+            // ==========================================
+            // 3. 繪製下方日式標籤 (完美鎖定「思源宋體」，絕無線條交叉混亂)
+            // ==========================================
+            const bottomText = bottomTextInput.value;
+            if (bottomText) {
+                // 字型一律鎖定為極高雅、清晰的思源宋體 Noto Serif TC
+                const bottomFont = "'Noto Serif TC', serif";
+                ctx.font = `900 75px ${bottomFont}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const textMetrics = ctx.measureText(bottomText);
+                const paddingX = 65;
+                const paddingY = 25;
+                const boxW = textMetrics.width + paddingX * 2;
+                const boxH = 120;
+                const boxX = (canvas.width - boxW) / 2;
+                const boxY = parseInt(bottomYInput.value) - boxH / 2;
+
+                // A. 圓角底板外黑影
+                ctx.save();
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 25;
+                ctx.fillStyle = bottomBgColor.value;
+                ctx.beginPath();
+                ctx.roundRect(boxX, boxY, boxW, boxH, 20);
+                ctx.fill();
+                ctx.restore();
+
+                // B. 底板外細黑框
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#000000';
+                ctx.stroke();
+
+                const textY = parseInt(bottomYInput.value);
+
+                // C. 繪製文字粗外框 (描邊底層 - 白框)
+                // 先畫白色外框，將 lineJoin 設為圓角
+                ctx.save();
+                ctx.lineJoin = 'round';
+                ctx.miterLimit = 2;
+                ctx.lineWidth = 15; // 完美的粗細設定，不會粗到讓筆劃打結
+                ctx.strokeStyle = bottomBorderColor.value;
+                ctx.strokeText(bottomText, canvas.width / 2, textY);
+                ctx.restore();
+
+                // D. 疊加填滿主體字 (填滿表層 - 紅字)
+                // 由於是先畫「寬框」，隨後在上方「填滿」覆蓋，字體內部的黑色交叉線會被 100% 蓋掉，呈現絕對乾淨、高級的邊框字！
+                ctx.save();
+                ctx.fillStyle = bottomTextColor.value;
+                ctx.fillText(bottomText, canvas.width / 2, textY);
+                ctx.restore();
+                
+                // E. 精細漫畫黑描邊 (最表層細黑邊框，增加字體立體層次，還原照片細節)
+                ctx.save();
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000000';
+                ctx.strokeText(bottomText, canvas.width / 2, textY);
+                ctx.restore();
+            }
+
+            // 4. 繪製 IG Reels 輔助安全線
+            if (toggleSafeZone.checked && !isRecording) {
+                ctx.save();
+                
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                ctx.fillRect(0, 0, canvas.width, 140);
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 140); ctx.lineTo(canvas.width, 140);
+                ctx.stroke();
+                
+                const safeBottomY = canvas.height - 280;
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                ctx.fillRect(0, safeBottomY, canvas.width, 280);
+                ctx.beginPath();
+                ctx.moveTo(0, safeBottomY); ctx.lineTo(canvas.width, safeBottomY);
+                ctx.stroke();
+
+                ctx.fillRect(canvas.width - 130, 140, 130, safeBottomY - 140);
+                ctx.beginPath();
+                ctx.moveTo(canvas.width - 130, 140); ctx.lineTo(canvas.width - 130, safeBottomY);
+                ctx.stroke();
+
+                ctx.fillStyle = '#f87171';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('⚠️ IG 頂部 UI 遮擋區', 20, 45);
+                ctx.fillText('⚠️ 右側按鈕區', canvas.width - 200, 350);
+                ctx.fillText('⚠️ IG 底部頭貼/文字區', 20, canvas.height - 40);
+
+                ctx.restore();
+            }
+        }
+
+        // ==========================================
+        // 穩定導出影片邏輯
+        // ==========================================
+        exportBtn.addEventListener('click', () => {
+            if (!videoLoaded) return;
+            
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        function startRecording() {
+            isRecording = true;
+            
+            exportBtn.classList.remove('from-blue-600', 'to-purple-600');
+            exportBtn.classList.add('from-red-600', 'to-orange-600');
+            exportText.textContent = "錄製中，點擊可強制導出影片";
+            statusMsg.textContent = "正在將完美置中與白色外發光漸層字體壓製成短影音中...";
+            playPauseBtn.classList.add('hidden');
+
+            videoElement.pause();
+            videoElement.currentTime = 0;
+            
+            videoElement.addEventListener('seeked', function startActualRecord() {
+                videoElement.removeEventListener('seeked', startActualRecord);
+                
+                drawFrame();
+
+                const fps = 30;
+                const canvasStream = canvas.captureStream(fps);
+                let combinedStream;
+
+                try {
+                    let videoStream = null;
+                    if (videoElement.captureStream) {
+                        videoStream = videoElement.captureStream();
+                    } else if (videoElement.mozCaptureStream) {
+                        videoStream = videoElement.mozCaptureStream();
+                    }
+
+                    if (videoStream) {
+                        const audioTracks = videoStream.getAudioTracks();
+                        if (audioTracks.length > 0) {
+                            combinedStream = new MediaStream([
+                                ...canvasStream.getVideoTracks(),
+                                ...audioTracks
+                            ]);
+                        } else {
+                            combinedStream = canvasStream;
+                        }
+                    } else {
+                        combinedStream = canvasStream;
+                    }
+                } catch (err) {
+                    combinedStream = canvasStream;
+                }
+
+                let options = { mimeType: 'video/webm; codecs=vp9' };
+                if (MediaRecorder.isTypeSupported('video/mp4; codecs=avc1.42E01E,mp4a.40.2')) {
+                    options = { mimeType: 'video/mp4; codecs=avc1.42E01E,mp4a.40.2' };
+                } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+                    options = { mimeType: 'video/mp4' };
+                } else if (MediaRecorder.isTypeSupported('video/webm; codecs=h264')) {
+                    options = { mimeType: 'video/webm; codecs=h264' };
+                }
+
+                recordedChunks = [];
+                try {
+                    mediaRecorder = new MediaRecorder(combinedStream, options);
+                } catch (e) {
+                    mediaRecorder = new MediaRecorder(combinedStream);
+                }
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    downloadVideo();
+                };
+
+                mediaRecorder.start();
+                videoElement.play();
+
+                videoElement.addEventListener('timeupdate', checkRecordingEnd);
+
+                const durationMs = (videoElement.duration || 10) * 1000;
+                recordingTimer = setTimeout(() => {
+                    stopRecording();
+                }, durationMs + 2000);
+            });
+        }
+
+        function checkRecordingEnd() {
+            if (videoElement.currentTime >= videoElement.duration - 0.1 || videoElement.ended) {
+                stopRecording();
+            }
+        }
+
+        function stopRecording() {
+            if (recordingTimer) {
+                clearTimeout(recordingTimer);
+                recordingTimer = null;
+            }
+
+            videoElement.removeEventListener('timeupdate', checkRecordingEnd);
+            
+            if (isRecording) {
+                isRecording = false;
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                videoElement.pause();
+                playPauseBtn.classList.remove('hidden');
+            }
+        }
+
+        function downloadVideo() {
+            const mimeType = mediaRecorder.mimeType || 'video/mp4';
+            const isMp4 = mimeType.includes('mp4');
+            const ext = isMp4 ? 'mp4' : 'webm';
+
+            if (recordedChunks.length === 0) {
+                statusMsg.textContent = "❌ 錄製失敗，請重新載入影片重試。";
+                resetButtonState();
+                return;
+            }
+
+            const blob = new Blob(recordedChunks, { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            document.body.appendChild(a);
+            a.style = 'display: none';
+            a.href = url;
+            a.download = `IG-Reels-Japanese-${Date.now()}.${ext}`;
+            a.click();
+            
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+
+            resetButtonState();
+            statusMsg.textContent = `🎉 成功導出！已儲存為高畫質日系綜藝短影音 (${ext.toUpperCase()})。`;
+            drawFrame();
+        }
+
+        function resetButtonState() {
+            exportBtn.classList.remove('from-red-600', 'to-orange-600');
+            exportBtn.classList.add('from-blue-600', 'to-purple-600');
+            exportText.textContent = "匯出並下載完美 MP4";
+            exportBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
+
