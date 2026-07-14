@@ -196,3 +196,115 @@ nav a:hover{
     font-size:32px;
 
 }
+/* 官方工具區 */
+
+.tools{
+
+    padding:60px 40px;
+
+    text-align:center;
+
+    background:white;
+
+}
+
+
+.tools h2{
+
+    font-size:36px;
+
+    margin-bottom:40px;
+
+}
+
+
+
+.tool-container{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:30px;
+
+    flex-wrap:wrap;
+
+}
+
+
+
+.tool-card{
+
+    width:280px;
+
+    background:#f8fafc;
+
+    border-radius:20px;
+
+    padding:30px;
+
+    box-shadow:
+    0 10px 25px rgba(0,0,0,.12);
+
+    transition:.3s;
+
+}
+
+
+
+.tool-card:hover{
+
+    transform:translateY(-8px);
+
+}
+
+
+
+.tool-card h3{
+
+    font-size:24px;
+
+    color:#003b7a;
+
+}
+
+
+
+.tool-card p{
+
+    color:#555;
+
+    min-height:50px;
+
+}
+
+
+
+.tool-card a{
+
+    display:inline-block;
+
+    margin-top:20px;
+
+    padding:12px 25px;
+
+    background:#003b7a;
+
+    color:white;
+
+    text-decoration:none;
+
+    border-radius:30px;
+
+    font-weight:bold;
+
+}
+
+
+.tool-card a:hover{
+
+    background:#ffcc00;
+
+    color:#003b7a;
+
+}
