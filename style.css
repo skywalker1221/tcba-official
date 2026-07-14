@@ -204,7 +204,7 @@ nav a:hover{
 
     text-align:center;
 
-    background:white;
+    background:#003b7a;
 
 }
 
@@ -214,6 +214,7 @@ nav a:hover{
     font-size:36px;
 
     margin-bottom:40px;
+    color:white;
 
 }
 
@@ -237,7 +238,7 @@ nav a:hover{
 
     width:280px;
 
-    background:#f8fafc;
+    background:white;
 
     border-radius:20px;
 
@@ -288,10 +289,10 @@ nav a:hover{
 
     padding:12px 25px;
 
-    background:#003b7a;
+    background:#ffcc00;
 
-    color:white;
-
+    color:#003b7a;
+    
     text-decoration:none;
 
     border-radius:30px;
