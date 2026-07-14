@@ -1,1 +1,198 @@
-/* TCBA Style */
+body{
+    margin:0;
+    font-family:
+    Arial,
+    "Microsoft JhengHei",
+    sans-serif;
+
+    background:#f4f7fb;
+    color:#111;
+}
+
+
+/* 導覽列 */
+
+.navbar{
+
+    position:sticky;
+    top:0;
+
+    background:#003b7a;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:18px 50px;
+
+    color:white;
+
+    box-shadow:
+    0 4px 15px rgba(0,0,0,.2);
+
+    z-index:10;
+}
+
+
+.logo{
+    display:flex;
+    flex-direction:column;
+}
+
+
+.tcba{
+
+    font-size:40px;
+    font-weight:900;
+    letter-spacing:2px;
+
+}
+
+
+.subtitle{
+
+    font-size:12px;
+    opacity:.8;
+
+}
+
+
+
+nav{
+
+    display:flex;
+    gap:25px;
+
+}
+
+
+nav a{
+
+    color:white;
+    text-decoration:none;
+
+    font-weight:bold;
+
+}
+
+
+nav a:hover{
+
+    color:#ffdf00;
+
+}
+
+
+
+/* 首頁主視覺 */
+
+.hero{
+
+    min-height:70vh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+
+    background:
+
+    linear-gradient(
+    rgba(0,30,70,.75),
+    rgba(0,0,0,.65)
+    ),
+
+    url("https://images.unsplash.com/photo-1566577739112-5180d4bf9390");
+
+
+    background-size:cover;
+
+    background-position:center;
+
+    color:white;
+
+}
+
+
+
+.hero h1{
+
+    font-size:48px;
+
+    margin-bottom:10px;
+
+}
+
+
+
+.hero p{
+
+    font-size:22px;
+
+    letter-spacing:2px;
+
+}
+
+
+
+.buttons{
+
+    margin-top:35px;
+
+    display:flex;
+
+    gap:20px;
+
+}
+
+
+
+.buttons a{
+
+    background:#ffcc00;
+
+    color:#003b7a;
+
+    padding:15px 30px;
+
+    border-radius:30px;
+
+    text-decoration:none;
+
+    font-weight:bold;
+
+    transition:.3s;
+
+}
+
+
+.buttons a:hover{
+
+    transform:translateY(-5px);
+
+}
+
+
+
+/* 最新消息 */
+
+.news{
+
+    padding:50px;
+
+    text-align:center;
+
+}
+
+
+.news h2{
+
+    font-size:32px;
+
+}
